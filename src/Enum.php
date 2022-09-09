@@ -2,6 +2,7 @@
 
 namespace BenSampo\Enum;
 
+use BenSampo\Enum\Attributes\ExtraValue;
 use Exception;
 use ReflectionClass;
 use JsonSerializable;
@@ -45,6 +46,11 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
     public ?string $description;
 
     /**
+     * The extra values of one of the enum members.
+     */
+    public ?array $extraValue;
+
+    /**
      * Caches reflections of enum subclasses.
      *
      * @var array<class-string<static>, ReflectionClass<static>>
@@ -67,6 +73,7 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
         $this->value = $enumValue;
         $this->key = static::getKey($enumValue);
         $this->description = static::getDescription($enumValue);
+        $this->extraValue = static::getExtraValue($enumValue);
     }
 
     /**
@@ -330,6 +337,18 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
     }
 
     /**
+     * Get the extra value for an enum value.
+     *
+     * @param  TValue  $value
+     */
+    public static function getExtraValue(mixed $value): array
+    {
+        return
+            static::getAttributeExtraValue($value) ??
+            [];
+    }
+
+    /**
      * Get the localized description of a value.
      *
      * This works only if localization is enabled
@@ -374,6 +393,29 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
     }
 
     /**
+     * Get the extra value of a value from its PHP attribute.
+     *
+     * @param  TValue  $value
+     */
+    protected static function getAttributeExtraValue(mixed $value): ?array
+    {
+        $reflection = self::getReflection();
+        $constantName = static::getKey($value);
+        $constReflection = $reflection->getReflectionConstant($constantName);
+        if ($constReflection === false) {
+            return null;
+        }
+
+        $extraValueAttributes = $constReflection->getAttributes(ExtraValue::class);
+
+        return match (count($extraValueAttributes)) {
+            0 => null,
+            1 => $extraValueAttributes[0]->newInstance()->extraValue,
+            default => throw new Exception('You cannot use more than 1 description attribute on ' . class_basename(static::class) . '::' . $constantName),
+        };
+    }
+
+    /**
      * Get the description of the enum class.
      * Default to Enum class short name
      *
@@ -385,6 +427,7 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
             ?? static::getFriendlyName(self::getReflection()->getShortName());
     }
 
+
     protected static function getClassAttributeDescription(): ?string
     {
         $reflection = self::getReflection();
@@ -394,6 +437,31 @@ abstract class Enum implements EnumContract, Castable, Arrayable, JsonSerializab
         return match (count($descriptionAttributes)) {
             0 => null,
             1 => $descriptionAttributes[0]->newInstance()->description,
+            default => throw new Exception('You cannot use more than 1 description attribute on '.class_basename(static::class))
+        };
+    }
+
+    /**
+     * Get the extra value of the enum class.
+     * Default to Enum class short name
+     *
+     * @return string
+     */
+    public static function getClassExtraValue(): array
+    {
+        return static::getClassAttributeExtraValue()
+            ?? [];
+    }
+
+    protected static function getClassAttributeExtraValue(): ?array
+    {
+        $reflection = self::getReflection();
+
+        $extraValueAttributes = $reflection->getAttributes(ExtraValue::class);
+
+        return match (count($extraValueAttributes)) {
+            0 => null,
+            1 => $extraValueAttributes[0]->newInstance()->extraValue,
             default => throw new Exception('You cannot use more than 1 description attribute on '.class_basename(static::class))
         };
     }

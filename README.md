@@ -39,7 +39,8 @@ Created by [Ben Sampson](https://sampo.co.uk)
 - [Migrations](#migrations)
 - [Validation](#validation)
 - [Localization](#localization)
-- [Customizing descriptions](#customizing-descriptions)
+- [Customizing descriptions](#customizing-value-descriptions)
+- [Customizing extra-value](#customizing-value-extra-values)
 - [Extending the Enum Base Class](#extending-the-enum-base-class)
 - [Laravel Nova Integration](#laravel-nova-integration)
 - [PHPStan Integration](#phpstan-integration)
@@ -159,7 +160,7 @@ php artisan enum:annotate "App\Enums\UserType"
 
 ### Instance Properties
 
-Once you have an enum instance, you can access the `key`, `value` and `description` as properties.
+Once you have an enum instance, you can access the `key`, `value`, `description` and `extraValue` as properties.
 
 ```php
 $userType = UserType::fromValue(UserType::SuperAdministrator);
@@ -167,6 +168,7 @@ $userType = UserType::fromValue(UserType::SuperAdministrator);
 $userType->key; // SuperAdministrator
 $userType->value; // 0
 $userType->description; // Super Administrator
+$userType->extraValue; // ['something']
 ```
 
 This is particularly useful if you're passing an enum instance to a blade view.
@@ -514,7 +516,7 @@ $example->user_type = UserType::Moderator();
 
 When using `toArray` (or returning model/models from your controller as a response) Laravel will call the `toArray` method on the enum instance.
 
-By default, this will return only the value in its native type. You may want to also have access to the other properties (key, description), for example to return
+By default, this will return only the value in its native type. You may want to also have access to the other properties (key, description, extraValue), for example to return
 to javascript app.
 
 To customise this behaviour, you can override the `toArray` method on the enum instance.
@@ -549,6 +551,8 @@ public function toArray()
 //  string(9) "MODERATOR"
 //  ["description"]=>
 //  string(9) "Moderator"
+//  ["extraValue"]=>
+//  array(0) []
 // }
 
 ```
@@ -808,6 +812,45 @@ final class UserType extends Enum
 Calling `UserType::SuperAdministrator()->description` now returns `Super admin` instead of `Super administrator`.
 
 You may also override the `getDescription` method on the base Enum class if you wish to have more control of the description.
+## Customizing enum class extra value
+
+If you'd like to return a custom extra value for your enum class, add a `ExtraValue` attribute to your Enum class:
+
+```php
+use BenSampo\Enum\Enum;
+use BenSampo\Enum\Attributes\ExtraValue;
+
+#[ExtraValue(['List of available User types'])]
+final class UserType extends Enum
+{
+    ...
+}
+```
+
+Calling `UserType::getClassExtraValue()` now returns `List of available User types` instead of `User type`.
+
+You may also override the `getClassExtraValue` method on the base Enum class if you wish to have more control of the extra value.
+
+## Customizing value extra values
+
+If you'd like to return a custom extra value for your enum values, add a `ExtraValue` attribute to your Enum constants:
+
+```php
+use BenSampo\Enum\Enum;
+use BenSampo\Enum\Attributes\ExtraValue;
+
+final class UserType extends Enum
+{
+    const Administrator = 'Administrator';
+
+    #[ExtraValue(['Super admin'])]
+    const SuperAdministrator = 'SuperAdministrator';
+}
+```
+
+Calling `UserType::SuperAdministrator()->extraValue` now returns [`Super admin`] .
+
+You may also override the `getExtraValue` method on the base Enum class if you wish to have more control of the extra value.
 
 ## Extending the Enum Base Class
 
@@ -929,6 +972,22 @@ Returns the key in sentence case for the enum value. It's possible to [customize
 UserType::getDescription(3); // Returns 'Super administrator'
 UserType::getDescription(UserType::SuperAdministrator); // Returns 'Super administrator'
 ```
+### static getClassExtraValue(): array
+
+Returns the class name in sentence case for the enum class. It's possible to [customize the extra value](#customizing-value-extra-values) if the guessed description is not appropriate.
+
+```php
+UserType::getClassExtraValue(); // Returns []
+```
+
+### static getExtraValue(mixed $value): string
+
+Returns the key in sentence case for the enum value. It's possible to [customize the description](#customizing-descriptions) if the guessed description is not appropriate.
+
+```php
+UserType::getDescription(3); // Returns 'Super administrator'
+UserType::getExtraValue(UserType::SuperAdministrator); // Returns ['Super administrator']
+```
 
 ### static getRandomKey(): string
 
@@ -994,6 +1053,8 @@ array(4) {
     int(0)
     public $description =>
     string(13) "Administrator"
+    public $extraValue =>
+    array(0) []
   }
   'Moderator' =>
   class BenSampo\Enum\Tests\Enums\UserType#396 (3) {
@@ -1001,8 +1062,10 @@ array(4) {
     string(9) "Moderator"
     public $value =>
     int(1)
-    public $description =>
+    public $array =>
     string(9) "Moderator"
+    public $extraValue =>
+    array(0) []
   }
   'Subscriber' =>
   class BenSampo\Enum\Tests\Enums\UserType#393 (3) {
@@ -1012,6 +1075,8 @@ array(4) {
     int(2)
     public $description =>
     string(10) "Subscriber"
+    public $extraValue =>
+    array(0) []
   }
   'SuperAdministrator' =>
   class BenSampo\Enum\Tests\Enums\UserType#102 (3) {
@@ -1021,6 +1086,8 @@ array(4) {
     int(3)
     public $description =>
     string(19) "Super administrator"
+    public $extraValue =>
+    array(0) []
   }
 }
 ```
